@@ -1,0 +1,33 @@
+---
+services:
+  keyserver:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 3000:3000
+    environment:
+        PORT: 3000
+        DB_HOST: postgres
+        DB_PORT: 5432
+        DB_USER: keyserver
+        DB_PASS: keyserver
+        DB_NAME: keyserver
+
+  postgres:
+    image: postgres:14.13-alpine
+    volumes:
+        - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U keyserver"]
+        interval: 5s
+        retries: 5
+    environment:
+      POSTGRES_USER: keyserver
+      POSTGRES_PASSWORD: keyserver
+      POSTGRES_DB: keyserver
+
+volumes:
+  postgres_data:
+    driver: local
