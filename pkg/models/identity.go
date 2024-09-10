@@ -6,8 +6,8 @@ import (
 
 type Identity struct {
 	gorm.Model
-	Name    string `json:"name"`
-	Comment string `json:"comment"`
-	Email   string `json:"email"`
-	KeyID   uint   `json:"key_id"`
+	Name           string `json:"name"`
+	Comment        string `json:"comment"`
+	Email          string `json:"email"`
+	KeyFingerprint string `json:"key_fingerprint" gorm:"not null;index"` // Foreign key to Key model
 }

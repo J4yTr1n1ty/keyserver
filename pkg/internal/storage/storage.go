@@ -37,6 +37,12 @@ func GetKeyIdentities(publicKeyArmored string) ([]string, []string, error) {
 	return identities, identityNames, nil
 }
 
+func GetUniqueIdentities() []models.Identity {
+	var identities []models.Identity
+	boot.DB.Distinct("name", "key_fingerprint").Find(&identities).Preload("Key")
+	return identities
+}
+
 func VerifyKey(publicKeyArmored string) (openpgp.EntityList, error) {
 	entityList, err := openpgp.ReadArmoredKeyRing(strings.NewReader(publicKeyArmored))
 	if err != nil {
@@ -103,7 +109,7 @@ func ListAllKeys() []models.Key {
 
 func GetKey(email string) (models.Key, error) {
 	var key models.Key
-	result := boot.DB.Preload("Identities").Joins("JOIN identities ON identities.key_id = keys.id").Where("identities.email = ?", email).First(&key)
+	result := boot.DB.Preload("Identities").Joins("JOIN identities ON identities.key_fingerprint = keys.fingerprint").Where("identities.email = ?", email).First(&key)
 
 	if result.Error == nil {
 		return key, nil

@@ -31,9 +31,7 @@
         <label for="signedmessage" class="form-label mt-4">Signed Message<br></label>
         <textarea rows="5" cols="50" id="message" name="message" class="form-control"></textarea>
         <label for="signer">Signer</label>
-        <select name="signer" id="signer" class="form-select">
-          <option value="TB-11">TB-11</option>
-          <option value="TB-3">TB-3</option>
+        <select name="signer" id="signer" class="form-select" hx-get="/identities" hx-target="this" hx-trigger="load">
         </select>
         <button type="submit" class="btn btn-primary mt-2">Verify signature</button>
       </form>

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+
+	"github.com/J4yTr1n1ty/keyserver/pkg/models"
 )
 
 var (
@@ -30,10 +32,26 @@ var InfoTemplate = `
 </div>
 `
 
+var ListTemplate = `
+{{ range . }}
+<option value="{{ . }}">{{ . }}</option>
+{{ end }}
+`
+
+var EmptyListTemplate = `
+<option value="" selected disabled>No identities found</option>
+`
+
 func RenderError(w http.ResponseWriter, httpStatus int, message string) error {
 	w.WriteHeader(httpStatus)
 
-	value, err := renderResponse(ErrorTemplate, message)
+	data := struct {
+		Message string
+	}{
+		Message: message,
+	}
+
+	value, err := renderTemplate(ErrorTemplate, data)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrExecutingTemplate, err)
 	}
@@ -46,7 +64,13 @@ func RenderError(w http.ResponseWriter, httpStatus int, message string) error {
 func RenderSuccess(w http.ResponseWriter, message string) error {
 	w.WriteHeader(http.StatusOK)
 
-	value, err := renderResponse(SuccessTemplate, message)
+	data := struct {
+		Message string
+	}{
+		Message: message,
+	}
+
+	value, err := renderTemplate(SuccessTemplate, data)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrExecutingTemplate, err)
 	}
@@ -59,7 +83,13 @@ func RenderSuccess(w http.ResponseWriter, message string) error {
 func RenderInfo(w http.ResponseWriter, message string) error {
 	w.WriteHeader(http.StatusOK)
 
-	value, err := renderResponse(InfoTemplate, message)
+	data := struct {
+		Message string
+	}{
+		Message: message,
+	}
+
+	value, err := renderTemplate(InfoTemplate, data)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrExecutingTemplate, err)
 	}
@@ -69,13 +99,39 @@ func RenderInfo(w http.ResponseWriter, message string) error {
 	return nil
 }
 
-func renderResponse(templateStr string, message string) (string, error) {
+func RenderListIdentities(w http.ResponseWriter, identityList []models.Identity) error {
+	w.WriteHeader(http.StatusOK)
+
+	if len(identityList) == 0 {
+		value, err := renderTemplate(EmptyListTemplate, []string{})
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrExecutingTemplate, err)
+		}
+
+		w.Write([]byte(value))
+		return nil
+	}
+
+	names := []string{}
+	for _, identity := range identityList {
+		names = append(names, fmt.Sprintf("%s (%s)", identity.Name, identity.KeyFingerprint))
+	}
+
+	value, err := renderTemplate(ListTemplate, names)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrExecutingTemplate, err)
+	}
+
+	w.Write([]byte(value))
+
+	return nil
+}
+
+func renderTemplate(templateStr string, data interface{}) (string, error) {
 	tmpl, err := template.New("template").Parse(templateStr)
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrParsingTemplate, err)
 	}
-
-	data := map[string]string{"Message": message}
 
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, data)

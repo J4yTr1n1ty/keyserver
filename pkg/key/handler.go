@@ -41,6 +41,11 @@ func (h *Handler) ListAll(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(storage.ListAllKeys())
 }
 
+func (h *Handler) ListIdentities(w http.ResponseWriter, r *http.Request) {
+	identityList := storage.GetUniqueIdentities()
+	htmx.RenderListIdentities(w, identityList)
+}
+
 func (h *Handler) SubmitKey(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
