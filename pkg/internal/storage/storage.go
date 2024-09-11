@@ -11,6 +11,7 @@ import (
 )
 
 func VerifyKey(publicKeyArmored string) (*crypto.Key, error) {
+	// HACK: Is this the best way to do this?
 	key, err := crypto.NewKeyFromArmored(publicKeyArmored)
 	if err != nil {
 		return nil, errors.New("Invalid PGP public key")
@@ -29,6 +30,7 @@ func SubmitKey(publicKeyArmored string) error {
 		return err
 	}
 
+	// TODO: Handle multiple keys
 	pubKeyArmored, err := keyRing.GetKey(0)
 	if err != nil {
 		return errors.New("Failed to serialize public key")
@@ -48,6 +50,7 @@ func SubmitKey(publicKeyArmored string) error {
 		// ValidUntil:  expirationTime, // TODO: Implement expiration time
 	}
 
+	// TODO: Possibly reduce the amount of identities stored in the database because of duplicate keys
 	for _, identity := range keyRing.GetIdentities() {
 		if identity.Email == "" {
 			continue
@@ -64,6 +67,7 @@ func SubmitKey(publicKeyArmored string) error {
 
 	result := boot.DB.Create(&key)
 	if result.Error != nil {
+		// TODO: Handle updating key if it already exists and expiration time has changed
 		if strings.Contains(result.Error.Error(), "duplicate key") {
 			return errors.New("A key for this fingerprint already exists")
 		}
@@ -105,6 +109,6 @@ func GetKeyByFingerprint(fingerprint string) (*crypto.Key, error) {
 		return nil, err
 	}
 
-	// Per convention, we only have one key
+	// HACK: Per convention, we only have one key
 	return keyring.GetKey(0)
 }
