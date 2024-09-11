@@ -18,6 +18,7 @@ func SetupRoutes() *http.ServeMux {
 
 	mux.HandleFunc("GET /identities", keyHandler.ListIdentities)
 	mux.HandleFunc("GET /list-all", keyHandler.ListAll)
+	mux.HandleFunc("GET /key-list", keyHandler.GetKeylist)
 	mux.HandleFunc("GET /key/{email}", keyHandler.GetKey)
 	mux.HandleFunc("POST /submit-key", keyHandler.SubmitKey)
 	mux.HandleFunc("POST /verify-message", keyHandler.VerifyMessage)

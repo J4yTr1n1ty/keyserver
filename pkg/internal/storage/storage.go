@@ -4,90 +4,62 @@ import (
 	"errors"
 	"strings"
 
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/gopenpgp/v3/crypto"
 
 	"github.com/J4yTr1n1ty/keyserver/pkg/boot"
 	"github.com/J4yTr1n1ty/keyserver/pkg/models"
 )
 
-// Fucntion that returns all entity id strings and their names
-func GetKeyIdentities(publicKeyArmored string) ([]string, []string, error) {
-	enityList, err := VerifyKey(publicKeyArmored)
+func VerifyKey(publicKeyArmored string) (*crypto.Key, error) {
+	key, err := crypto.NewKeyFromArmored(publicKeyArmored)
 	if err != nil {
-		return nil, nil, err
+		return nil, errors.New("Invalid PGP public key")
 	}
 
-	var identities []string
-	var identityNames []string
-	for _, entity := range enityList {
-		identities = append(identities, entity.PrimaryKey.KeyIdString())
-		for _, identity := range entity.Identities {
-			identityNames = append(identityNames, identity.Name)
-		}
-	}
-
-	if len(identities) == 0 {
-		return nil, nil, errors.New("no identities found in the provided armored key")
-	}
-
-	if len(identityNames) == 0 {
-		return nil, nil, errors.New("no identity names found in the provided armored key")
-	}
-
-	return identities, identityNames, nil
-}
-
-func GetUniqueIdentities() []models.Identity {
-	var identities []models.Identity
-	boot.DB.Distinct("name", "key_fingerprint").Find(&identities).Preload("Key")
-	return identities
-}
-
-func VerifyKey(publicKeyArmored string) (openpgp.EntityList, error) {
-	entityList, err := openpgp.ReadArmoredKeyRing(strings.NewReader(publicKeyArmored))
-	if err != nil {
-		return nil, errors.New("invalid PGP public key")
-	}
-
-	if len(entityList) == 0 {
-		return nil, errors.New("no keys found in the provided armored key")
-	}
-
-	for _, entity := range entityList {
-		if entity.PrivateKey != nil {
-			return nil, errors.New("private key detected, only public keys are accepted")
-		}
-	}
-
-	return entityList, nil
+	return key, nil
 }
 
 func SubmitKey(publicKeyArmored string) error {
-	entityList, err := openpgp.ReadArmoredKeyRing(strings.NewReader(publicKeyArmored))
+	importedKey, err := VerifyKey(publicKeyArmored)
 	if err != nil {
-		return errors.New("Invalid PGP public key")
+		return err
+	}
+	keyRing, err := crypto.NewKeyRing(importedKey)
+	if err != nil {
+		return err
 	}
 
-	if len(entityList) == 0 {
-		return errors.New("No keys found in the provided armored key")
+	pubKeyArmored, err := keyRing.GetKey(0)
+	if err != nil {
+		return errors.New("Failed to serialize public key")
 	}
 
-	entity := entityList[0]
-	if entity.PrivateKey != nil {
-		return errors.New("Private key detected, only public keys are accepted")
+	creationTime := keyRing.GetKeys()[0].GetEntity().PrimaryKey.CreationTime
+
+	keyBytes, err := pubKeyArmored.Serialize()
+	if err != nil {
+		return err
 	}
 
 	key := models.Key{
-		Fingerprint: entity.PrimaryKey.KeyIdString(),
-		PublicKey:   publicKeyArmored, // TODO: rethink this for storage efficiency
+		Fingerprint: keyRing.GetKeys()[0].GetFingerprint(),
+		PublicKey:   keyBytes,
+		ValidFrom:   creationTime,
+		// ValidUntil:  expirationTime, // TODO: Implement expiration time
 	}
 
-	for _, identity := range entity.Identities {
+	for _, identity := range keyRing.GetIdentities() {
+		if identity.Email == "" {
+			continue
+		}
 		key.Identities = append(key.Identities, models.Identity{
-			Name:    identity.UserId.Name,
-			Comment: identity.UserId.Comment,
-			Email:   identity.UserId.Email,
+			Name:  identity.Name,
+			Email: identity.Email,
 		})
+	}
+
+	if len(key.Identities) == 0 {
+		return errors.New("No identities found in the provided armored key")
 	}
 
 	result := boot.DB.Create(&key)
@@ -101,19 +73,38 @@ func SubmitKey(publicKeyArmored string) error {
 	return nil
 }
 
+func GetUniqueIdentities() []models.Identity {
+	var identities []models.Identity
+	boot.DB.Select("DISTINCT ON (name, key_fingerprint) *").Order("name, key_fingerprint, created_at DESC").Find(&identities)
+	return identities
+}
+
 func ListAllKeys() []models.Key {
 	var keys []models.Key
 	boot.DB.Preload("Identities").Find(&keys)
 	return keys
 }
 
-func GetKey(email string) (models.Key, error) {
+func GetKeyByEmail(email string) (*models.Key, error) {
 	var key models.Key
 	result := boot.DB.Preload("Identities").Joins("JOIN identities ON identities.key_fingerprint = keys.fingerprint").Where("identities.email = ?", email).First(&key)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &key, nil
+}
 
-	if result.Error == nil {
-		return key, nil
+func GetKeyByFingerprint(fingerprint string) (*crypto.Key, error) {
+	var key models.Key
+	result := boot.DB.Where("fingerprint = ?", fingerprint).First(&key)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	keyring, err := crypto.NewKeyRingFromBinary(key.PublicKey)
+	if err != nil {
+		return nil, err
 	}
 
-	return models.Key{}, errors.New("Key not found")
+	// Per convention, we only have one key
+	return keyring.GetKey(0)
 }
