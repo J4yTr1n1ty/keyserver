@@ -1,6 +1,6 @@
 module github.com/J4yTr1n1ty/keyserver
 
-go 1.23.1
+go 1.23
 
 require (
 	github.com/ProtonMail/gopenpgp/v3 v3.0.0-alpha.4-proton
