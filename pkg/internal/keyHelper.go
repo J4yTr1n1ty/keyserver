@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
 
@@ -37,7 +38,7 @@ func VerifyMessage(fingerprint, message string) (string, error) {
 		return "", fmt.Errorf("verifier is nil")
 	}
 
-	verifyResult, err := verifier.VerifyInline([]byte(message), crypto.Auto)
+	verifyResult, err := verifier.VerifyCleartext([]byte(message))
 	if err != nil {
 		return "", fmt.Errorf("failed to verify message: %v", err)
 	}
@@ -46,7 +47,9 @@ func VerifyMessage(fingerprint, message string) (string, error) {
 		return "", sigErr
 	}
 
-	return verifyResult.SignedByKeyIdHex(), nil
+	creationTime := time.Unix(verifyResult.SignatureCreationTime(), 0)
+
+	return creationTime.Format(time.RFC822), nil
 }
 
 // GetKeyIdentities returns all entity id strings and their names

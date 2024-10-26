@@ -126,11 +126,11 @@ func (h *Handler) VerifyMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verified_signature, err := internal.VerifyMessage(signer_fingerprint, message)
+	signatureCreationDate, err := internal.VerifyMessage(signer_fingerprint, message)
 	if err != nil {
 		htmx.RenderError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	htmx.RenderSuccess(w, "Message verified successfully ("+verified_signature+")")
+	htmx.RenderSuccess(w, "Message verified successfully (created: "+signatureCreationDate+")")
 }
