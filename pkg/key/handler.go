@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"slices"
+	"strings"
 
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
 
@@ -20,13 +20,15 @@ func NewHandler() *Handler {
 }
 
 func (h *Handler) GetKeylist(w http.ResponseWriter, r *http.Request) {
-	accept_header := r.Header["Accept"]
-	if slices.Contains(accept_header, "application/json") {
+	accept_header := r.Header.Get("Accept")
+	if strings.Contains(accept_header, "application/json") {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(storage.GetUniqueIdentities())
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		htmx.RenderKeyTable(w, storage.GetUniqueIdentities())
+		if err := htmx.RenderKeyTable(w, storage.GetUniqueIdentities()); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -69,8 +71,8 @@ func (h *Handler) ListAll(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListIdentities(w http.ResponseWriter, r *http.Request) {
 	identityList := storage.GetUniqueIdentities()
-	accept_header := r.Header["Accept"]
-	if slices.Contains(accept_header, "application/json") {
+	accept_header := r.Header.Get("Accept")
+	if strings.Contains(accept_header, "application/json") {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(identityList)
 	} else {

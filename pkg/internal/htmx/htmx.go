@@ -146,7 +146,7 @@ func RenderListIdentities(w http.ResponseWriter, identityList []models.Identity)
 		return nil
 	}
 
-	data := []ListData{}
+	data := make([]ListData, len(identityList))
 	for _, identity := range identityList {
 		data = append(data, ListData{
 			Name:        identity.Name,
@@ -177,10 +177,7 @@ func RenderKeyTable(w http.ResponseWriter, identityList []models.Identity) error
 		return nil
 	}
 
-	data := []models.Identity{}
-	for _, identity := range identityList {
-		data = append(data, identity)
-	}
+	data := append([]models.Identity{}, identityList...)
 
 	value, err := renderTemplate(KeyTableTemplate, data)
 	if err != nil {

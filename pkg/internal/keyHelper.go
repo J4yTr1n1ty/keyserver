@@ -84,24 +84,3 @@ func GetKeyIdentities(publicKeyArmored string) ([]string, []string, error) {
 
 	return identities, identityNames, nil
 }
-
-// ExtractPGPMessageAndSignature extracts the message and signature from a PGP signed block
-// returns the message as the first return value and the signature as the second
-func ExtractPGPMessageAndSignature(signedBlock string) (string, string, error) {
-	parts := strings.SplitN(signedBlock, "-----BEGIN PGP SIGNATURE-----", 2)
-	if len(parts) != 2 {
-		return "", "", fmt.Errorf("invalid PGP signed message format")
-	}
-
-	message := strings.TrimSpace(strings.TrimPrefix(parts[0], "-----BEGIN PGP SIGNED MESSAGE-----"))
-	message = strings.TrimSpace(strings.TrimPrefix(message, "Hash: SHA256"))
-
-	signature := strings.TrimSpace(parts[1])
-	signature = strings.TrimSuffix(signature, "-----END PGP SIGNATURE-----")
-	signature = strings.TrimSpace(signature)
-
-	// Remove any newlines from the signature
-	signature = strings.ReplaceAll(signature, "\n", "")
-
-	return message, signature, nil
-}
