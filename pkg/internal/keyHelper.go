@@ -3,7 +3,6 @@ package internal
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
